@@ -22,10 +22,8 @@ This implementation is **faithful to the official inference pipeline** with zero
 
 ```bash
 cd ComfyUI/custom_nodes
-git clone --recursive https://github.com/YOUR_USERNAME/ComfyUI_JoyAI_Echo.git
+git clone https://github.com/zhuang2002/ComfyUI_JoyAI_Echo.git
 ```
-
-The `--recursive` flag pulls the official JoyAI-Echo repo as a git submodule.
 
 ### 2. Install dependencies
 

@@ -1,16 +1,13 @@
 """ComfyUI nodes for JoyAI-Echo: minute-level multi-shot audio-video generation."""
 
-import os
 import sys
 from pathlib import Path
 
 _NODE_ROOT = Path(__file__).resolve().parent
-_ECHO_REPO = _NODE_ROOT / "JoyAI-Echo"
+_LIBS = str(_NODE_ROOT / "libs")
 
-for _subpath in ["ltx-core/src", "ltx-pipelines/src", "ltx-distillation/src"]:
-    _p = str(_ECHO_REPO / _subpath)
-    if _p not in sys.path:
-        sys.path.insert(0, _p)
+if _LIBS not in sys.path:
+    sys.path.insert(0, _LIBS)
 
 from .nodes import JoyEcho_ModelLoader, JoyEcho_TextEncode, JoyEcho_Generate, JoyEcho_PromptFormat
 
