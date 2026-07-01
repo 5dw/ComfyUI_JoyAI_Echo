@@ -107,6 +107,7 @@ GEMMA_LLM_KEY_OPS = (
     .with_replacement("language_model.model.", "model.model.language_model.")
     # 2. Map the Vision Tower
     .with_matching(prefix="vision_tower.")
+    .with_replacement("vision_tower.vision_model.", "model.model.vision_tower.")
     .with_replacement("vision_tower.", "model.model.vision_tower.")
     # 3. Map the Multi-Modal Projector
     .with_matching(prefix="multi_modal_projector.")
@@ -257,6 +258,22 @@ def _register_inv_freq_if_present(module: torch.nn.Module, attr_name: str, inv_f
         rotary_emb.register_buffer("inv_freq", inv_freq)
 
 
+def _register_gemma3_rotary_buffers(l_model: torch.nn.Module, inv_freqs: torch.Tensor, local_rope_freqs: torch.Tensor) -> None:
+    rotary_emb = getattr(l_model, "rotary_emb", None)
+    if rotary_emb is None:
+        return
+
+    buffer_names = set(dict(rotary_emb.named_buffers()).keys())
+    if "full_attention_inv_freq" in buffer_names:
+        rotary_emb.register_buffer("full_attention_inv_freq", inv_freqs)
+    if "full_attention_original_inv_freq" in buffer_names:
+        rotary_emb.register_buffer("full_attention_original_inv_freq", inv_freqs)
+    if "sliding_attention_inv_freq" in buffer_names:
+        rotary_emb.register_buffer("sliding_attention_inv_freq", local_rope_freqs)
+    if "sliding_attention_original_inv_freq" in buffer_names:
+        rotary_emb.register_buffer("sliding_attention_original_inv_freq", local_rope_freqs)
+
+
 def create_and_populate(module: GemmaTextEncoder) -> GemmaTextEncoder:
     model = module.model
     # Transformers variants may expose either:
@@ -284,6 +301,7 @@ def create_and_populate(module: GemmaTextEncoder) -> GemmaTextEncoder:
     l_model.embed_tokens.register_buffer("embed_scale", embed_scale)
     _register_inv_freq_if_present(l_model, "rotary_emb_local", local_rope_freqs)
     _register_inv_freq_if_present(l_model, "rotary_emb", inv_freqs)
+    _register_gemma3_rotary_buffers(l_model, inv_freqs, local_rope_freqs)
 
     return module
 
