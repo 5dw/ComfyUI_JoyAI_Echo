@@ -34,6 +34,34 @@ def _move(module, device):
         module.to(device)
 
 
+def _ensure_text_encoder(model: dict):
+    if model.get("text_encoder") is not None:
+        return model["text_encoder"]
+
+    from ltx_distillation.models.text_encoder_wrapper import create_text_encoder_wrapper
+
+    checkpoint_path = model.get("checkpoint_path")
+    gemma_path = model.get("gemma_path")
+    if not checkpoint_path or not gemma_path:
+        raise RuntimeError(
+            "Text encoder not available and model paths are missing. "
+            "Reload JoyEcho Model Loader to encode new prompts."
+        )
+
+    device = model.get("text_encoder_device", model["device"])
+    dtype = model["dtype"]
+    print(f"[JoyEcho] Text encoder was released; reloading it on {device}...", flush=True)
+    text_encoder = create_text_encoder_wrapper(
+        checkpoint_path=checkpoint_path,
+        gemma_path=gemma_path,
+        device=device,
+        dtype=dtype,
+    )
+    text_encoder.eval()
+    model["text_encoder"] = text_encoder
+    return text_encoder
+
+
 class SequentialOffloader:
     """Layer-by-layer GPU offloading for the DiT transformer blocks.
 
@@ -215,6 +243,7 @@ class JoyEcho_ModelLoader:
             "audio_vae": audio_vae,
             "audio_sample_rate": audio_sample_rate,
             "device": device,
+            "text_encoder_device": text_encoder_device,
             "dtype": dtype,
             "checkpoint_path": checkpoint_path,
             "gemma_path": gemma_path,
@@ -1246,10 +1275,11 @@ class JoyEcho_StoryToVideo:
             temperature=temperature,
         )[0]
 
+        _ensure_text_encoder(model)
         encoded_model, conditioning = JoyEcho_TextEncode().encode(
             model=model,
             prompts=prompts_json,
-            release_text_encoder=release_text_encoder,
+            release_text_encoder=False,
         )
 
         images, audio = JoyEcho_Generate().generate(
@@ -1268,6 +1298,12 @@ class JoyEcho_StoryToVideo:
             sequential_offload=sequential_offload,
             output_prefix=output_prefix,
         )
+
+        if release_text_encoder and encoded_model.get("text_encoder") is not None:
+            del encoded_model["text_encoder"]
+            encoded_model["text_encoder"] = None
+            gc.collect()
+            _empty_cache()
 
         return (images, audio, prompts_json, encoded_model,)
 
@@ -1355,6 +1391,8 @@ class JoyEcho_StoryShotToVideo:
     ):
         if not story_idea.strip():
             raise ValueError("Story idea is empty. Enter this shot's requirement first.")
+
+        _ensure_text_encoder(model)
 
         prompt_json = JoyEcho_LLMEnhance().enhance(
             story_idea=story_idea,

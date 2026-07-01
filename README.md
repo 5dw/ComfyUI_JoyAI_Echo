@@ -149,6 +149,16 @@ pip install -r requirements.txt
 [Story Shot To Video 2: memory/model] -> [Story Shot To Video 3 ...]
 ```
 
+`image/audio` 不需要传给下一个 Story Shot 节点；它们用于当前镜头的视频预览和下载：
+
+```
+[Story Shot To Video 1: images/audio] -> [CreateVideo] -> [SaveVideo]
+[Story Shot To Video 2: images/audio] -> [CreateVideo] -> [SaveVideo]
+[Story Shot To Video 3: images/audio] -> [CreateVideo] -> [SaveVideo]
+```
+
+也就是说，每个单镜头节点有两条输出线：`memory/model` 传给下一个镜头保持连续性，`images/audio` 接视频节点生成当前镜头的可播放文件。
+
 ### JoyEcho Prompt At Index
 
 从 JSON 提示词数组中按索引提取单条提示词。连接到 SingleShot 节点的 prompt 输入可覆盖文本框内容（可选功能）。
