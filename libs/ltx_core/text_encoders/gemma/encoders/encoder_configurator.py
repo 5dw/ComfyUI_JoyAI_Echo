@@ -159,9 +159,17 @@ def _resolve_rope_type(config: Gemma3Config) -> str:
     versions use {"rope_type": ...}. We normalize to the newer shape so
     downstream code sees a consistent config.
     """
+    def _fallback_rope_type() -> str:
+        # Different transformers versions expose different keys for unscaled RoPE.
+        for candidate in ("default", "none", "linear", "dynamic", "yarn", "longrope", "llama3"):
+            if candidate in ROPE_INIT_FUNCTIONS:
+                return candidate
+        supported = ", ".join(sorted(ROPE_INIT_FUNCTIONS.keys()))
+        raise ValueError(f"No usable rope initializer found. Supported rope types: {supported}")
+
     rope_scaling = getattr(config, "rope_scaling", None)
     if rope_scaling is None:
-        return "default"
+        return _fallback_rope_type()
 
     if not isinstance(rope_scaling, dict):
         raise TypeError(f"Expected rope_scaling to be dict or None, got {type(rope_scaling).__name__}")
@@ -176,11 +184,27 @@ def _resolve_rope_type(config: Gemma3Config) -> str:
         rope_type = legacy_type
 
     if rope_type is None:
-        return "default"
+        # Infer the intended mode from known rope_scaling payload shapes.
+        if "short_factor" in rope_scaling and "long_factor" in rope_scaling:
+            rope_type = "longrope"
+        elif "low_freq_factor" in rope_scaling and "high_freq_factor" in rope_scaling:
+            rope_type = "llama3"
+        elif "beta_fast" in rope_scaling and "beta_slow" in rope_scaling:
+            rope_type = "yarn"
+        elif "factor" in rope_scaling:
+            rope_type = "linear"
+        else:
+            rope_type = _fallback_rope_type()
 
     if rope_type not in ROPE_INIT_FUNCTIONS:
-        supported = ", ".join(sorted(ROPE_INIT_FUNCTIONS.keys()))
-        raise ValueError(f"Unsupported rope_type={rope_type!r}. Supported rope types: {supported}")
+        # Alias across transformers versions: some builds used "none" instead of "default".
+        if rope_type == "default" and "none" in ROPE_INIT_FUNCTIONS:
+            rope_type = "none"
+        elif rope_type == "none" and "default" in ROPE_INIT_FUNCTIONS:
+            rope_type = "default"
+        else:
+            supported = ", ".join(sorted(ROPE_INIT_FUNCTIONS.keys()))
+            raise ValueError(f"Unsupported rope_type={rope_type!r}. Supported rope types: {supported}")
 
     return rope_type
 
