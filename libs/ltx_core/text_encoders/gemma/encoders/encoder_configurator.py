@@ -209,6 +209,35 @@ def _resolve_rope_type(config: Gemma3Config) -> str:
     return rope_type
 
 
+def _normalize_rope_scaling_for_type(config: Gemma3Config, rope_type: str) -> None:
+    """Normalize rope_scaling payload so selected rope_type has required fields.
+
+    Some checkpoints/configs expose legacy keys or omit optional fields that
+    newer transformers initializers expect.
+    """
+    rope_scaling = getattr(config, "rope_scaling", None)
+    if rope_scaling is None:
+        rope_scaling = {}
+    if not isinstance(rope_scaling, dict):
+        raise TypeError(f"Expected rope_scaling to be dict or None, got {type(rope_scaling).__name__}")
+
+    normalized = dict(rope_scaling)
+    normalized["rope_type"] = rope_type
+
+    if rope_type == "linear":
+        factor = normalized.get("factor")
+        if factor is None:
+            factor = normalized.get("scaling_factor")
+        if factor is None:
+            factor = normalized.get("scale")
+        if factor is None:
+            # Neutral linear scale when config omits factor.
+            factor = 1.0
+        normalized["factor"] = float(factor)
+
+    config.rope_scaling = normalized
+
+
 def create_and_populate(module: GemmaTextEncoder) -> GemmaTextEncoder:
     model = module.model
     # Transformers variants may expose either:
@@ -225,6 +254,7 @@ def create_and_populate(module: GemmaTextEncoder) -> GemmaTextEncoder:
     base = getattr(config, "rope_local_base_freq", 10000)
     local_rope_freqs = 1.0 / (base ** (torch.arange(0, dim, 2, dtype=torch.int64).to(dtype=torch.float) / dim))
     rope_type = _resolve_rope_type(config)
+    _normalize_rope_scaling_for_type(config, rope_type)
     inv_freqs, _ = ROPE_INIT_FUNCTIONS[rope_type](config)
 
     positions_length = len(v_model.embeddings.position_ids[0])
