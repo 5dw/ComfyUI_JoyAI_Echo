@@ -102,13 +102,12 @@ pip install -r requirements.txt
 
 ### JoyEcho Story To Video
 
-一体化多镜头节点：输入用户要求，选择 `long_story (multi-shot)` 或 `short_story (single-shot)` 系统提示词，通过 OpenAI 兼容 API 生成 JoyAI-Echo 提示词，然后直接编码并生成完整视频帧和音频。适合“一次生成完整多镜头视频”的场景。
+一体化多镜头节点：输入用户要求，固定使用 `long_story (multi-shot)` 系统提示词，通过 OpenAI 兼容 API 生成 JoyAI-Echo 提示词，然后直接编码并生成完整视频帧和音频。适合“一次生成完整多镜头视频”的场景。
 
 | 输入 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
 | model | JOYECHO_MODEL | — | 来自 Model Loader |
 | story_idea | STRING | — | 用户对视频内容的要求 |
-| prompt_mode | ENUM | long_story | 二选一系统提示词：长故事多镜头 / 短故事单镜头 |
 | api_key | STRING | — | OpenAI 兼容 API 密钥 |
 | base_url | STRING | `https://api.openai.com/v1` | API 基础 URL |
 | model_name | STRING | gpt-4o | LLM 模型名 |
@@ -128,7 +127,7 @@ pip install -r requirements.txt
 
 ### JoyEcho Story Shot To Video
 
-一体化单镜头节点：每个节点输入一个 `short_story` 用户要求，自动生成单条 Echo 提示词并生成一个镜头。该节点支持 `JOYECHO_MEMORY` 输入/输出，可以把多个节点串联成多镜头流程，并保留每个镜头独立调整的能力。
+一体化单镜头节点：每个节点输入一个用户要求，固定使用 `short_story (single-shot)` 系统提示词，自动生成单条 Echo 提示词并生成一个镜头。该节点支持 `JOYECHO_MEMORY` 输入/输出，可以把多个节点串联成多镜头流程，并保留每个镜头独立调整的能力。
 
 | 输入 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|

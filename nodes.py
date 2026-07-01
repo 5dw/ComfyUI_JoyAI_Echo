@@ -1156,7 +1156,6 @@ class JoyEcho_StoryToVideo:
                     "default": "A young creator records a warm lifestyle vlog, sharing a sincere thought while moving through a visually rich everyday scene.",
                     "tooltip": "Describe what you want the final Echo video to show and say.",
                 }),
-                "prompt_mode": (["long_story (multi-shot)", "short_story (single-shot)"],),
                 "api_key": ("STRING", {
                     "default": "",
                     "tooltip": "OpenAI-compatible API key used to write JoyAI-Echo prompts.",
@@ -1214,7 +1213,6 @@ class JoyEcho_StoryToVideo:
         self,
         model: dict,
         story_idea: str,
-        prompt_mode: str,
         api_key: str,
         seed: int = 12345,
         num_frames: int = 241,
@@ -1239,7 +1237,7 @@ class JoyEcho_StoryToVideo:
 
         prompts_json = JoyEcho_LLMEnhance().enhance(
             story_idea=story_idea,
-            mode=prompt_mode,
+            mode="long_story (multi-shot)",
             api_key=api_key,
             system_prompt="",
             base_url=base_url,
