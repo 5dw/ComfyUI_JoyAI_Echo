@@ -9,7 +9,7 @@ _LIBS = str(_NODE_ROOT / "libs")
 if _LIBS not in sys.path:
     sys.path.insert(0, _LIBS)
 
-from .nodes import JoyEcho_ModelLoader, JoyEcho_TextEncode, JoyEcho_Generate, JoyEcho_SingleShotGenerate, JoyEcho_PromptFormat, JoyEcho_LLMEnhance, JoyEcho_StoryToVideo, JoyEcho_PromptAtIndex
+from .nodes import JoyEcho_ModelLoader, JoyEcho_TextEncode, JoyEcho_Generate, JoyEcho_SingleShotGenerate, JoyEcho_PromptFormat, JoyEcho_LLMEnhance, JoyEcho_StoryToVideo, JoyEcho_StoryShotToVideo, JoyEcho_PromptAtIndex
 
 NODE_CLASS_MAPPINGS = {
     "JoyEcho_ModelLoader": JoyEcho_ModelLoader,
@@ -19,6 +19,7 @@ NODE_CLASS_MAPPINGS = {
     "JoyEcho_PromptFormat": JoyEcho_PromptFormat,
     "JoyEcho_LLMEnhance": JoyEcho_LLMEnhance,
     "JoyEcho_StoryToVideo": JoyEcho_StoryToVideo,
+    "JoyEcho_StoryShotToVideo": JoyEcho_StoryShotToVideo,
     "JoyEcho_PromptAtIndex": JoyEcho_PromptAtIndex,
 }
 
@@ -30,6 +31,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "JoyEcho_PromptFormat": "JoyEcho Prompt Format (Helper)",
     "JoyEcho_LLMEnhance": "JoyEcho LLM Enhance",
     "JoyEcho_StoryToVideo": "JoyEcho Story To Video",
+    "JoyEcho_StoryShotToVideo": "JoyEcho Story Shot To Video",
     "JoyEcho_PromptAtIndex": "JoyEcho Prompt At Index",
 }
 

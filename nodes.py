@@ -1274,6 +1274,131 @@ class JoyEcho_StoryToVideo:
         return (images, audio, prompts_json, encoded_model,)
 
 
+class JoyEcho_StoryShotToVideo:
+    """Generate one adjustable short-story shot and pass memory to the next shot."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "model": ("JOYECHO_MODEL",),
+                "story_idea": ("STRING", {
+                    "multiline": True,
+                    "default": "A single cinematic vlog shot with natural speech, consistent identity, and synchronized ambient sound.",
+                    "tooltip": "Describe this one shot. Chain multiple nodes for a multi-shot story.",
+                }),
+                "api_key": ("STRING", {
+                    "default": "",
+                    "tooltip": "OpenAI-compatible API key used to write this shot prompt.",
+                }),
+                "seed": ("INT", {"default": 12345, "min": 0, "max": 2**31 - 1}),
+                "num_frames": ("INT", {"default": 241, "min": 9, "max": 481, "step": 8,
+                                       "tooltip": "Frames for this shot; must be 1 + 8*k."}),
+                "video_height": ("INT", {"default": 736, "min": 256, "max": 1088, "step": 32}),
+                "video_width": ("INT", {"default": 1280, "min": 256, "max": 1920, "step": 32}),
+            },
+            "optional": {
+                "memory": ("JOYECHO_MEMORY",),
+                "base_url": ("STRING", {
+                    "default": "https://api.openai.com/v1",
+                    "tooltip": "OpenAI-compatible API base URL, for example https://api.deepseek.com/v1.",
+                }),
+                "model_name": ("STRING", {
+                    "default": "gpt-4o",
+                    "tooltip": "LLM model name, for example gpt-4o or deepseek-chat.",
+                }),
+                "temperature": ("FLOAT", {
+                    "default": 0.7, "min": 0.0, "max": 2.0, "step": 0.05,
+                }),
+                "release_text_encoder": ("BOOLEAN", {
+                    "default": False,
+                    "tooltip": "Keep disabled when chaining more story-shot nodes; enable on the last node to free VRAM.",
+                }),
+                "video_fps": ("INT", {"default": 25, "min": 1, "max": 60}),
+                "v2a_grad_scale": ("FLOAT", {"default": 2.0, "min": 0.0, "max": 10.0, "step": 0.1}),
+                "memory_max_size": ("INT", {"default": 7, "min": 0, "max": 20}),
+                "num_fix_frames": ("INT", {"default": 3, "min": 0, "max": 10}),
+                "enable_audio_memory": ("BOOLEAN", {"default": True}),
+                "audio_memory_window_size": ("INT", {"default": 96, "min": 16, "max": 256}),
+                "sequential_offload": ("BOOLEAN", {
+                    "default": False,
+                    "tooltip": "Enable layer-by-layer GPU offloading for DiT.",
+                }),
+            },
+        }
+
+    RETURN_TYPES = ("IMAGE", "AUDIO", "STRING", "JOYECHO_MEMORY", "JOYECHO_MODEL",)
+    RETURN_NAMES = ("images", "audio", "prompt_json", "memory", "model",)
+    FUNCTION = "generate_story_shot"
+    CATEGORY = "JoyAI-Echo"
+    OUTPUT_NODE = True
+
+    def generate_story_shot(
+        self,
+        model: dict,
+        story_idea: str,
+        api_key: str,
+        seed: int = 12345,
+        num_frames: int = 241,
+        video_height: int = 736,
+        video_width: int = 1280,
+        memory: dict | None = None,
+        base_url: str = "https://api.openai.com/v1",
+        model_name: str = "gpt-4o",
+        temperature: float = 0.7,
+        release_text_encoder: bool = False,
+        video_fps: int = 25,
+        v2a_grad_scale: float = 2.0,
+        memory_max_size: int = 7,
+        num_fix_frames: int = 3,
+        enable_audio_memory: bool = True,
+        audio_memory_window_size: int = 96,
+        sequential_offload: bool = False,
+    ):
+        if not story_idea.strip():
+            raise ValueError("Story idea is empty. Enter this shot's requirement first.")
+
+        prompt_json = JoyEcho_LLMEnhance().enhance(
+            story_idea=story_idea,
+            mode="short_story (single-shot)",
+            api_key=api_key,
+            system_prompt="",
+            base_url=base_url,
+            model_name=model_name,
+            num_shots=1,
+            temperature=temperature,
+        )[0]
+
+        prompt_list = JoyEcho_TextEncode._parse_prompts(prompt_json)
+        if not prompt_list:
+            raise RuntimeError("LLM generated no usable JoyAI-Echo prompt.")
+
+        images, audio, memory_out, model_out = JoyEcho_SingleShotGenerate().generate_shot(
+            model=model,
+            prompt=prompt_list[0],
+            seed=seed,
+            num_frames=num_frames,
+            video_height=video_height,
+            video_width=video_width,
+            memory=memory,
+            video_fps=video_fps,
+            v2a_grad_scale=v2a_grad_scale,
+            memory_max_size=memory_max_size,
+            num_fix_frames=num_fix_frames,
+            enable_audio_memory=enable_audio_memory,
+            audio_memory_window_size=audio_memory_window_size,
+            sequential_offload=sequential_offload,
+        )
+
+        if release_text_encoder and model_out.get("text_encoder") is not None:
+            del model_out["text_encoder"]
+            model_out["text_encoder"] = None
+            gc.collect()
+            _empty_cache()
+
+        return (images, audio, prompt_json, memory_out, model_out,)
+
+
 class JoyEcho_PromptAtIndex:
     """Extract a single prompt from a JSON prompts array by index.
 

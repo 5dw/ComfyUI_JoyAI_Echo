@@ -100,6 +100,56 @@ pip install -r requirements.txt
 
 支持任何 OpenAI 兼容 API（OpenAI、DeepSeek 等）。
 
+### JoyEcho Story To Video
+
+一体化多镜头节点：输入用户要求，选择 `long_story (multi-shot)` 或 `short_story (single-shot)` 系统提示词，通过 OpenAI 兼容 API 生成 JoyAI-Echo 提示词，然后直接编码并生成完整视频帧和音频。适合“一次生成完整多镜头视频”的场景。
+
+| 输入 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| model | JOYECHO_MODEL | — | 来自 Model Loader |
+| story_idea | STRING | — | 用户对视频内容的要求 |
+| prompt_mode | ENUM | long_story | 二选一系统提示词：长故事多镜头 / 短故事单镜头 |
+| api_key | STRING | — | OpenAI 兼容 API 密钥 |
+| base_url | STRING | `https://api.openai.com/v1` | API 基础 URL |
+| model_name | STRING | gpt-4o | LLM 模型名 |
+| num_shots | INT | 0 | 指定镜头数，0 表示交给系统提示词决定 |
+| release_text_encoder | BOOLEAN | True | 编码后释放 Gemma 以节省显存 |
+| output_prefix | STRING | `joyecho/story_shot` | 逐镜头生成时保存的 mp4 前缀 |
+
+**输出**: IMAGE + AUDIO + prompts_json + MODEL
+
+在线预览和下载请连接：
+
+```
+[JoyEcho Story To Video: images/audio] -> [CreateVideo] -> [SaveVideo]
+```
+
+`SaveVideo` 会在 ComfyUI 结果区域提供可播放预览和下载入口；`prompts_json` 可连接到文本预览或保存节点，用于查看 LLM 实际生成的 Echo 提示词。
+
+### JoyEcho Story Shot To Video
+
+一体化单镜头节点：每个节点输入一个 `short_story` 用户要求，自动生成单条 Echo 提示词并生成一个镜头。该节点支持 `JOYECHO_MEMORY` 输入/输出，可以把多个节点串联成多镜头流程，并保留每个镜头独立调整的能力。
+
+| 输入 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| model | JOYECHO_MODEL | — | 来自 Model Loader，或上一个 Story Shot To Video 的 model 输出 |
+| story_idea | STRING | — | 当前单镜头的用户要求 |
+| api_key | STRING | — | OpenAI 兼容 API 密钥 |
+| memory | JOYECHO_MEMORY | — | 可选，来自上一个 Story Shot To Video 或 Single Shot 节点 |
+| base_url | STRING | `https://api.openai.com/v1` | API 基础 URL |
+| model_name | STRING | gpt-4o | LLM 模型名 |
+| release_text_encoder | BOOLEAN | False | 串联多个节点时保持 False；最后一个节点可设为 True 释放显存 |
+
+**输出**: IMAGE + AUDIO + prompt_json + MEMORY + MODEL
+
+串联多个单镜头节点时请连接：
+
+```
+[Model Loader: model] -> [Story Shot To Video 1: model]
+[Story Shot To Video 1: memory/model] -> [Story Shot To Video 2: memory/model]
+[Story Shot To Video 2: memory/model] -> [Story Shot To Video 3 ...]
+```
+
 ### JoyEcho Prompt At Index
 
 从 JSON 提示词数组中按索引提取单条提示词。连接到 SingleShot 节点的 prompt 输入可覆盖文本框内容（可选功能）。
