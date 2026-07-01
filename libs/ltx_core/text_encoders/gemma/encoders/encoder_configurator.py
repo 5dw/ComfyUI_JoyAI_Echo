@@ -108,7 +108,6 @@ GEMMA_LLM_KEY_OPS = (
     # 2. Map the Vision Tower
     .with_matching(prefix="vision_tower.")
     .with_replacement("vision_tower.vision_model.", "model.model.vision_tower.")
-    .with_replacement("vision_tower.", "model.model.vision_tower.")
     # 3. Map the Multi-Modal Projector
     .with_matching(prefix="multi_modal_projector.")
     .with_replacement("multi_modal_projector.", "model.model.multi_modal_projector.")
