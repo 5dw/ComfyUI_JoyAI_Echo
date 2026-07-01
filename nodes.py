@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import gc
 import json
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -629,7 +630,12 @@ class JoyEcho_Generate:
             import folder_paths
             output_dir = folder_paths.get_output_directory()
         except Exception:
-            output_dir = Path("/root/ComfyUI/output")
+            cwd_output = Path.cwd() / "output"
+            try:
+                cwd_output.mkdir(parents=True, exist_ok=True)
+                output_dir = cwd_output
+            except Exception:
+                output_dir = Path(tempfile.gettempdir()) / "ComfyUI" / "output"
 
         # Build output path
         parts = prefix.rsplit("/", 1)

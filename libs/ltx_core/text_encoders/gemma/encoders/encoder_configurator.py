@@ -152,6 +152,39 @@ VIDEO_ONLY_EMBEDDINGS_PROCESSOR_KEY_OPS = (
 )
 
 
+def _resolve_rope_type(config: Gemma3Config) -> str:
+    """Resolve RoPE type from config with legacy-key compatibility.
+
+    Some transformer versions store rope_scaling as {"type": ...} while newer
+    versions use {"rope_type": ...}. We normalize to the newer shape so
+    downstream code sees a consistent config.
+    """
+    rope_scaling = getattr(config, "rope_scaling", None)
+    if rope_scaling is None:
+        return "default"
+
+    if not isinstance(rope_scaling, dict):
+        raise TypeError(f"Expected rope_scaling to be dict or None, got {type(rope_scaling).__name__}")
+
+    rope_type = rope_scaling.get("rope_type")
+    legacy_type = rope_scaling.get("type")
+
+    if rope_type is None and legacy_type is not None:
+        normalized_scaling = dict(rope_scaling)
+        normalized_scaling["rope_type"] = legacy_type
+        config.rope_scaling = normalized_scaling
+        rope_type = legacy_type
+
+    if rope_type is None:
+        return "default"
+
+    if rope_type not in ROPE_INIT_FUNCTIONS:
+        supported = ", ".join(sorted(ROPE_INIT_FUNCTIONS.keys()))
+        raise ValueError(f"Unsupported rope_type={rope_type!r}. Supported rope types: {supported}")
+
+    return rope_type
+
+
 def create_and_populate(module: GemmaTextEncoder) -> GemmaTextEncoder:
     model = module.model
     # Transformers variants may expose either:
@@ -167,7 +200,8 @@ def create_and_populate(module: GemmaTextEncoder) -> GemmaTextEncoder:
     # Use the canonical local RoPE default when missing.
     base = getattr(config, "rope_local_base_freq", 10000)
     local_rope_freqs = 1.0 / (base ** (torch.arange(0, dim, 2, dtype=torch.int64).to(dtype=torch.float) / dim))
-    inv_freqs, _ = ROPE_INIT_FUNCTIONS[config.rope_scaling["rope_type"]](config)
+    rope_type = _resolve_rope_type(config)
+    inv_freqs, _ = ROPE_INIT_FUNCTIONS[rope_type](config)
 
     positions_length = len(v_model.embeddings.position_ids[0])
     position_ids = torch.arange(positions_length, dtype=torch.long, device="cpu").unsqueeze(0)
