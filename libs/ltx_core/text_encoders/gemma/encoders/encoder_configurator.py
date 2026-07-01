@@ -238,6 +238,19 @@ def _normalize_rope_scaling_for_type(config: Gemma3Config, rope_type: str) -> No
     config.rope_scaling = normalized
 
 
+def _normalize_rope_base_params(config: Gemma3Config) -> None:
+    """Ensure base RoPE parameters are populated for transformers initializers.
+
+    Some environments deserialize Gemma text config with None for rope_theta.
+    Transformers RoPE init expects a numeric base and will fail with None.
+    """
+    default_text_cfg = GEMMA3_CONFIG_FOR_LTX.text_config
+    if getattr(config, "rope_theta", None) is None:
+        config.rope_theta = default_text_cfg.rope_theta
+    if getattr(config, "rope_local_base_freq", None) is None:
+        config.rope_local_base_freq = default_text_cfg.rope_local_base_freq
+
+
 def create_and_populate(module: GemmaTextEncoder) -> GemmaTextEncoder:
     model = module.model
     # Transformers variants may expose either:
@@ -248,6 +261,7 @@ def create_and_populate(module: GemmaTextEncoder) -> GemmaTextEncoder:
     l_model = model.model.language_model
 
     config = model.config.text_config
+    _normalize_rope_base_params(config)
     dim = getattr(config, "head_dim", config.hidden_size // config.num_attention_heads)
     # Some transformers/Gemma3TextConfig variants do not expose `rope_local_base_freq`.
     # Use the canonical local RoPE default when missing.
