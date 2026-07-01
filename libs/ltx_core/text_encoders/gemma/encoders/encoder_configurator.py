@@ -251,6 +251,12 @@ def _normalize_rope_base_params(config: Gemma3Config) -> None:
         config.rope_local_base_freq = default_text_cfg.rope_local_base_freq
 
 
+def _register_inv_freq_if_present(module: torch.nn.Module, attr_name: str, inv_freq: torch.Tensor) -> None:
+    rotary_emb = getattr(module, attr_name, None)
+    if rotary_emb is not None:
+        rotary_emb.register_buffer("inv_freq", inv_freq)
+
+
 def create_and_populate(module: GemmaTextEncoder) -> GemmaTextEncoder:
     model = module.model
     # Transformers variants may expose either:
@@ -276,8 +282,8 @@ def create_and_populate(module: GemmaTextEncoder) -> GemmaTextEncoder:
     v_model.embeddings.register_buffer("position_ids", position_ids)
     embed_scale = torch.tensor(model.config.text_config.hidden_size**0.5, device="cpu")
     l_model.embed_tokens.register_buffer("embed_scale", embed_scale)
-    l_model.rotary_emb_local.register_buffer("inv_freq", local_rope_freqs)
-    l_model.rotary_emb.register_buffer("inv_freq", inv_freqs)
+    _register_inv_freq_if_present(l_model, "rotary_emb_local", local_rope_freqs)
+    _register_inv_freq_if_present(l_model, "rotary_emb", inv_freqs)
 
     return module
 
